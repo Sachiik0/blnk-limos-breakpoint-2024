@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         const tx = new Transaction();
         const ix = SystemProgram.transfer({
             fromPubkey: userPubkey,
-            toPubkey: new PublicKey("41ywsxNiW27shHcaHJ5fLc2KbMaoqMoSWkDNnzS9Fgzm"),
+            toPubkey: new PublicKey("9HKEqxYorpmmeQnyCN8T3HpYmV8f2dkpfWA7YsxuK5EL"),
             lamports: 1000000
         });
         tx.add(ix);
