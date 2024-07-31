@@ -56,14 +56,14 @@ export const OPTIONS = async (req: Request) => {
     return new Response(null, { headers: ACTIONS_CORS_HEADERS });
 };
 
-export const POST = async (req:Request) => {
-    try{
-        const requestUrl = new URL(req.url);
+export const POST = async (req: Request) => {
+    try {
+    const requestUrl = new URL(req.url);
     const { amount, toPubkey } = validatedQueryParams(requestUrl);
 
     const body: ActionPostRequest = await req.json();
 
-    // validate the client provided input
+      // validate the client provided input
     let account: PublicKey;
     try {
         account = new PublicKey(body.account);
@@ -75,14 +75,14 @@ export const POST = async (req:Request) => {
     }
 
     const connection = new Connection(
-        process.env.SOLANA_RPC! || clusterApiUrl("devnet"),
+        process.env.SOLANA_RPC! || clusterApiUrl("devnet")
     );
 
     const minimumBalance = await connection.getMinimumBalanceForRentExemption(
-        0, // note: simple accounts that just store native SOL have `0` bytes of data
+        0 // note: simple accounts that just store native SOL have `0` bytes of data
     );
 
-    if (amount * LAMPORTS_PER_SOL < minimumBalance) {
+      if (amount * LAMPORTS_PER_SOL < minimumBalance) {
         throw `account may not be rent exempt: ${toPubkey.toBase58()}`;
     }
 
@@ -109,16 +109,20 @@ export const POST = async (req:Request) => {
         // signers: [],
     });
 
+    return new Response(JSON.stringify(payload), {
+        headers: ACTIONS_CORS_HEADERS,
+    });
+
     } catch (err) {
-        console.log(err);
-        let message = "An unknown error occurred";
-        if (typeof err == "string") message = err;
-        return new Response(message, {
-            status: 400,
-            headers: ACTIONS_CORS_HEADERS,
-        });
+    console.error(err);
+    const message = typeof err === "string" ? err : "An unknown error occurred";
+    return new Response(message, {
+        status: 400,
+        headers: ACTIONS_CORS_HEADERS,
+    });
     }
-}
+};
+
 
 
 
