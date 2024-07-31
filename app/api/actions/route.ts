@@ -58,92 +58,75 @@ export const OPTIONS = async (req: Request) => {
 
 export const POST = async (req: Request) => {
     try {
-    const requestUrl = new URL(req.url);
-    const { amount, toPubkey } = validatedQueryParams(requestUrl);
-
-    const body: ActionPostRequest = await req.json();
-
+        const requestUrl = new URL(req.url);
+        const { amount, toPubkey } = validatedQueryParams(requestUrl);
+  
+        const body: ActionPostRequest = await req.json();
+  
       // validate the client provided input
-    let account: PublicKey;
-    try {
+      let account: PublicKey;
+      try {
         account = new PublicKey(body.account);
-    } catch (err) {
-        return new Response('Invalid "account" provided', {
-            status: 400,
-            headers: ACTIONS_CORS_HEADERS,
+      } catch (err) {
+        return new Response(JSON.stringify({ error: 'Invalid "account" provided' }), {
+          status: 400,
+          headers: ACTIONS_CORS_HEADERS,
         });
-    }
-
-    const connection = new Connection(
+      }
+  
+      const connection = new Connection(
         process.env.SOLANA_RPC! || clusterApiUrl("devnet")
-    );
-
-    // Create a test transaction to calculate fees
-    let transaction = new Transaction().add(
+      );
+  
+      // Create a test transaction to calculate fees
+      let transaction = new Transaction().add(
         SystemProgram.transfer({
-            fromPubkey: account,
-            toPubkey: DEFAULT_SOL_ADDRESS,
-            lamports: amount,
+          fromPubkey: account,
+          toPubkey: DEFAULT_SOL_ADDRESS,
+          lamports: amount,
         })
-    );
-
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = account;
-
-    // Calculate exact fee rate to transfer entire SOL amount out of account minus fees
-    const fee = (await connection.getFeeForMessage(transaction.compileMessage(), 'confirmed')).value || 0;
-
-     // Remove our transfer instruction to replace it
-    transaction.instructions.pop();
-
-     // Now add the instruction back with correct amount of lamports
-    transaction.add(
+      );
+  
+      const { blockhash } = await connection.getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = account;
+  
+      // Calculate exact fee rate to transfer entire SOL amount out of account minus fees
+      const fee = (await connection.getFeeForMessage(transaction.compileMessage(), 'confirmed')).value || 0;
+  
+      // Remove our transfer instruction to replace it
+      transaction.instructions.pop();
+  
+      // Now add the instruction back with correct amount of lamports
+      transaction.add(
         SystemProgram.transfer({
-            fromPubkey: account,
-            toPubkey: DEFAULT_SOL_ADDRESS,
-            lamports: amount - fee,
+          fromPubkey: account,
+          toPubkey: DEFAULT_SOL_ADDRESS,
+          lamports: amount - fee,
         })
-    );
-
-
-    // const transferSolInstruction = SystemProgram.transfer({
-    //     fromPubkey: account,
-    //     toPubkey: toPubkey,
-    //     lamports: amount * LAMPORTS_PER_SOL,
-    // });
-
-    // const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-
-    // const transaction = new Transaction({
-    //     feePayer: account,
-    //     blockhash,
-    //     lastValidBlockHeight,
-    // }).add(transferSolInstruction);
-
-    // Calculate exact fee rate to transfer entire SOL amount out of account minus fees
-    const payload: ActionPostResponse = await createPostResponse({
+      );
+  
+      const payload: ActionPostResponse = await createPostResponse({
         fields: {
-            transaction,
-            message: `Send ${amount} SOL to ${toPubkey.toBase58()}`,
+          transaction,
+          message: `Send ${amount} SOL to ${toPubkey.toBase58()}`,
         },
-        // note: no additional signers are needed
-        // signers: [],
-    });
-
-    return new Response(JSON.stringify(payload), {
+      });
+  
+      return new Response(JSON.stringify(payload), {
         headers: ACTIONS_CORS_HEADERS,
-    });
-
+      });
+  
     } catch (err) {
-    console.error(err);
-    const message = typeof err === "string" ? err : "An unknown error occurred";
-    return new Response(message, {
+      console.error(err);
+      const message = typeof err === "string" ? err : "An unknown error occurred";
+      return new Response(JSON.stringify({ error: message }), {
         status: 400,
         headers: ACTIONS_CORS_HEADERS,
-    });
+      });
     }
-};
+  };
+  
 
 
 
