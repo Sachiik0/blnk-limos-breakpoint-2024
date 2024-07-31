@@ -1,5 +1,5 @@
 import {ActionPostResponse, ACTIONS_CORS_HEADERS, createPostResponse, ActionGetResponse, ActionPostRequest} from "@solana/actions";
-import {clusterApiUrl,Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction} from "@solana/web3.js";
+import {clusterApiUrl,Connection, LAMPORTS_PER_SOL, PublicKey, sendAndConfirmRawTransaction, SystemProgram, Transaction} from "@solana/web3.js";
 import { DEFAULT_SOL_ADDRESS, DEFAULT_SOL_AMOUNT } from "./const";
 
 
@@ -78,28 +78,50 @@ export const POST = async (req: Request) => {
         process.env.SOLANA_RPC! || clusterApiUrl("devnet")
     );
 
-    const minimumBalance = await connection.getMinimumBalanceForRentExemption(
-        0 // note: simple accounts that just store native SOL have `0` bytes of data
+    // Create a test transaction to calculate fees
+    let transaction = new Transaction().add(
+        SystemProgram.transfer({
+            fromPubkey: account,
+            toPubkey: DEFAULT_SOL_ADDRESS,
+            lamports: amount,
+        })
     );
 
-      if (amount * LAMPORTS_PER_SOL < minimumBalance) {
-        throw `account may not be rent exempt: ${toPubkey.toBase58()}`;
-    }
+    const { blockhash } = await connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = account;
 
-    const transferSolInstruction = SystemProgram.transfer({
-        fromPubkey: account,
-        toPubkey: toPubkey,
-        lamports: amount * LAMPORTS_PER_SOL,
-    });
+    // Calculate exact fee rate to transfer entire SOL amount out of account minus fees
+    const fee = (await connection.getFeeForMessage(transaction.compileMessage(), 'confirmed')).value || 0;
 
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+     // Remove our transfer instruction to replace it
+    transaction.instructions.pop();
 
-    const transaction = new Transaction({
-        feePayer: account,
-        blockhash,
-        lastValidBlockHeight,
-    }).add(transferSolInstruction);
+     // Now add the instruction back with correct amount of lamports
+    transaction.add(
+        SystemProgram.transfer({
+            fromPubkey: account,
+            toPubkey: DEFAULT_SOL_ADDRESS,
+            lamports: amount - fee,
+        })
+    );
 
+
+    // const transferSolInstruction = SystemProgram.transfer({
+    //     fromPubkey: account,
+    //     toPubkey: toPubkey,
+    //     lamports: amount * LAMPORTS_PER_SOL,
+    // });
+
+    // const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+    // const transaction = new Transaction({
+    //     feePayer: account,
+    //     blockhash,
+    //     lastValidBlockHeight,
+    // }).add(transferSolInstruction);
+
+    // Calculate exact fee rate to transfer entire SOL amount out of account minus fees
     const payload: ActionPostResponse = await createPostResponse({
         fields: {
             transaction,
