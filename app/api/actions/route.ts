@@ -14,10 +14,10 @@ export const GET  = async (req: Request) => {
         ).toString();
 
         const payload: ActionGetResponse = {
-            title: '',
-            icon: '',
-            description:'',
-            label:'',
+            title: "test",
+            icon: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fbeluga.fandom.com%2Fwiki%2FCrying_Cat&psig=AOvVaw3qo-5taQetvMuVS-0a3SLk&ust=1722476212466000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCIDK_YiS0IcDFQAAAAAdAAAAABAE",
+            description:"test",
+            label:"Donate",
             links:{
                 actions:[
                     {
